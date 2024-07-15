@@ -23,10 +23,10 @@ macro_rules
   | `(tactic | by $[$terms],* done) =>
    `(tactic| solve_by_elim only [$[$terms:ident],*])
 
-syntax matitaJust " we " " proved " term:max " ( " ident " ) " : tactic
+syntax matitaJust " we " " proved " term " as " ident : tactic
 
 macro_rules
-  | `(tactic | by $terms,* we proved $term ( $ident )) =>
+  | `(tactic | by $terms,* we proved $term as $ident) =>
     `(tactic | have $ident : $term := by solve_by_elim only [$[$terms:ident],*])
 
 declare_syntax_cat matitaEquivalent
@@ -40,7 +40,6 @@ macro_rules
   `(tactic | guard_target =ₛ $term)
  | `(tactic | we need to prove $exp that is equivalent to $inf) =>
   `(tactic | guard_target =ₛ $exp <;> change $inf)
-
 
 end matita
 
@@ -85,11 +84,10 @@ theorem reflexivity_inclusion: ∀A, A ⊆ A := by
  by ZA done
 
 theorem empty_absurd: ∀X A, X ∈ ∅ → X ∈ A := by
- Fix X A
- Assume H: X ∈ ∅
- By ax_empty applied to X using H we get K: False
- Let's prove it's contradictory
- We conclude by K
+ assume X : set
+ assume A : set
+ suppose X ∈ ∅ as H
+ by ax_empty, H done
 
 theorem intersection_idempotent: ∀A, A ∩ A = A := by
  assume A : set
@@ -97,8 +95,8 @@ theorem intersection_idempotent: ∀A, A ∩ A = A := by
  assume Z : set
  apply Iff.intro -- ???
  . suppose Z ∈ A ∩ A as H
-   by ax_intersect1 we proved (Z ∈ A ∩ A → Z ∈ A ∧ Z ∈ A) (K)
-   by K, H we proved (Z ∈ A ∧ Z ∈ A) (C)
+   by ax_intersect1 we proved Z ∈ A ∩ A → Z ∈ A ∧ Z ∈ A as K
+   by K, H we proved Z ∈ A ∧ Z ∈ A as C
    by And.left, C done
  . suppose Z ∈ A as H
    by ax_intersect2, H done

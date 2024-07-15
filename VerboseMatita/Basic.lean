@@ -8,10 +8,10 @@ syntax "assume " ident " : " term : tactic
 macro_rules
   | `(tactic| assume $x:ident : $type) => `(tactic| Fix₁ $x:ident : $type)
 
-syntax "suppose " assumeDecl : tactic
+syntax "suppose " term " as "ident : tactic
 
 macro_rules
-  | `(tactic| suppose $decl:assumeDecl) => `(tactic| Assume₁ $decl)
+  | `(tactic| suppose $x:term as $id:ident) => `(tactic| Assume₁ $id:ident : $x:term)
 
 declare_syntax_cat matitaJust
 
@@ -81,7 +81,7 @@ theorem reflexivity_inclusion: ∀A, A ⊆ A := by
  assume A: set
  we need to prove A ⊆ A that is equivalent to ∀Z, Z ∈ A → Z ∈ A
  assume Z: set
- suppose ZA : Z ∈ A
+ suppose Z ∈ A as ZA
  by ZA done
 
 theorem empty_absurd: ∀X A, X ∈ ∅ → X ∈ A := by
@@ -96,11 +96,11 @@ theorem intersection_idempotent: ∀A, A ∩ A = A := by
  By ax_extensionality it suffices to prove ∀Z, Z ∈ A ∩ A ↔ Z ∈ A
  assume Z : set
  apply Iff.intro -- ???
- . suppose H : Z ∈ A ∩ A
+ . suppose Z ∈ A ∩ A as H
    by ax_intersect1 we proved (Z ∈ A ∩ A → Z ∈ A ∧ Z ∈ A) (K)
    by K, H we proved (Z ∈ A ∧ Z ∈ A) (C)
    by And.left, C done
- . suppose H : Z ∈ A
+ . suppose Z ∈ A as H
    by ax_intersect2, H done
 
 end matita

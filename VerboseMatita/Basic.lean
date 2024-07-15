@@ -18,44 +18,53 @@ macro_rules
 
 declare_syntax_cat matitaJust
 
--- syntax "by " Lean.Parser.Tactic.SolveByElim.args : matitaJust
 syntax "by " ident,* : matitaJust
 
 syntax matitaJust " done" : tactic
-
--- macro_rules
---   | `(tactic | by $terms done) => `(tactic| solve_by_elim only $terms)
 
 macro_rules
   | `(tactic | by $[$terms],* done) =>
    `(tactic| solve_by_elim only [$[$terms:ident],*])
 
-syntax matitaJust " we proved " term:max " ( " ident " ) " : tactic
+syntax matitaJust " we " " proved " term:max " ( " ident " ) " : tactic
 
 macro_rules
   | `(tactic | by $terms,* we proved $term ( $ident )) =>
     `(tactic | have $ident : $term := by solve_by_elim only [$[$terms:ident],*])
 
---elab "by " terms:Lean.Parser.Tactic.SolveByElim.args " we proved " news:newStuff : tactic => do
---obtainTac (← maybeAppliedToTerm e) (newStuffToArray news)
+declare_syntax_cat matitaEquivalent
+
+syntax "that " "is " "equivalent " "to " term : matitaEquivalent
+
+syntax "we " "need " "to " "prove " term (matitaEquivalent)? : tactic
+
+macro_rules
+ | `(tactic | we need to prove $term) =>
+  `(tactic | guard_target =ₛ $term)
+ | `(tactic | we need to prove $exp that is equivalent to $inf) =>
+  `(tactic | guard_target =ₛ $exp <;> change $inf)
+
 
 end matita
+
+-- By ax_inclusion2 it suffices to prove that ∀Z, Z ∈ A → Z ∈ A
 
 namespace set_theory
 
 /- set, ∈ -/
 axiom set: Type
 axiom mem: set → set → Prop
-axiom incl: set → set → Prop
 
 infix:50 (priority := high) " ∈ " => mem
-infix:50 (priority := high) " ⊆ " => incl
 
 -- Extensionality
 axiom ax_extensionality: ∀A B, (∀Z, Z ∈ A ↔ Z ∈ B) → A = B
+
 -- Inclusion
-axiom ax_inclusion1: ∀A B, A ⊆ B → (∀Z, Z ∈ A → Z ∈ B)
-axiom ax_inclusion2: ∀A B, (∀Z, Z ∈ A → Z ∈ B) → A ⊆ B
+def incl (A:set) (B:set) : Prop :=
+ ∀Z, Z ∈ A → Z ∈ B
+
+infix:50 (priority := high) " ⊆ " => incl
 
 -- Emptyset  ∅
 axiom emptyset: set
@@ -71,7 +80,7 @@ axiom ax_intersect2: ∀A B, ∀Z, (Z ∈ A ∧ Z ∈ B → Z ∈ A ∩ B)
 -- matita
 theorem matita.reflexivity_inclusion: ∀A, A ⊆ A := by
  assume A:set
- By ax_inclusion2 it suffices to prove that ∀Z, Z ∈ A → Z ∈ A
+ we need to prove A ⊆ A that is equivalent to ∀Z, Z ∈ A → Z ∈ A
  assume Z:set
  suppose ZA : Z ∈ A
  by ZA done
@@ -79,7 +88,7 @@ theorem matita.reflexivity_inclusion: ∀A, A ⊆ A := by
 -- procedural proof
 theorem reflexivity_inclusion: ∀A, A ⊆ A := by
  intro A
- apply ax_inclusion2
+ whnf
  intro Z
  intro H
  apply H
@@ -87,7 +96,7 @@ theorem reflexivity_inclusion: ∀A, A ⊆ A := by
 -- declarative proof, explicit hypotheses
 theorem reflexivity_inclusion2: ∀A, A ⊆ A := by
  Fix A -- or Fix A : set
- By ax_inclusion2 it suffices to prove that ∀Z, Z ∈ A → Z ∈ A
+ whnf -- ??
  Fix Z
  Assume HA : Z ∈ A
  We conclude by HA
@@ -95,7 +104,7 @@ theorem reflexivity_inclusion2: ∀A, A ⊆ A := by
 -- declarative proof, implicit hypotheses
 theorem reflexivity_inclusion3: ∀A, A ⊆ A := by
  Fix A -- or Fix A : set
- By ax_inclusion2 it suffices to prove that ∀Z, Z ∈ A → Z ∈ A
+ whnf -- ??
  Fix Z
  Assume HA : Z ∈ A
  Since Z ∈ A we conclude that Z ∈ A
@@ -119,24 +128,6 @@ theorem matita.intersection_idempotent: ∀A, A ∩ A = A := by
    by And.left, C done
  . suppose H : Z ∈ A
    by ax_intersect2, H done
-
-/-theorem intersection_idempotent: ∀A, A ∩ A = A := by
- Fix A
- By ax_extensionality it suffices to prove ∀Z, Z ∈ A ∩ A ↔ Z ∈ A
- Fix Z
- apply Iff.intro -- ???
- . Assume H : Z ∈ A ∩ A
-   By ax_intersect1 applied to [ A, A, Z ] we get K: Z ∈ A ∩ A → Z ∈ A ∧ Z ∈ A
-   By K applied to H we get C: Z ∈ A ∧ Z ∈ A
-   We conclude by And.left applied to C
- . Assume H : Z ∈ A
-
-   solve_by_elim only [ ax_intersect2, And.intro, H]
-
-   By And.intro applied to [H, H] we get C: Z ∈ A ∧ Z ∈ A
-   By ax_intersect2 applied to [A, A] we get X: _  -- horror
-   We conclude by X applied to Z using C
--/
 
 end set_theory
 

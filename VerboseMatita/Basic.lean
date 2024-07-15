@@ -3,13 +3,10 @@ import Verbose.English.All
 
 namespace matita
 
---declare_syntax_cat matitaFixDecl
---syntax ident " : " term : matitaFixDecl
---syntax "assume " matitaFixDecl : tactic
-syntax "assume " fixDecl : tactic
+syntax "assume " ident " : " term : tactic
 
 macro_rules
-  | `(tactic| assume $decl:fixDecl) => `(tactic| Fix₁ $decl:fixDecl)
+  | `(tactic| assume $x:ident : $type) => `(tactic| Fix₁ $x:ident : $type)
 
 syntax "suppose " assumeDecl : tactic
 
@@ -81,9 +78,9 @@ axiom ax_intersect2: ∀A B, ∀Z, (Z ∈ A ∧ Z ∈ B → Z ∈ A ∩ B)
 namespace matita
 
 theorem reflexivity_inclusion: ∀A, A ⊆ A := by
- assume A:set
+ assume A: set
  we need to prove A ⊆ A that is equivalent to ∀Z, Z ∈ A → Z ∈ A
- assume Z:set
+ assume Z: set
  suppose ZA : Z ∈ A
  by ZA done
 

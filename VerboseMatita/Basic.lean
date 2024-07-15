@@ -6,12 +6,12 @@ namespace matita
 syntax "assume " ident " : " term : tactic
 
 macro_rules
-  | `(tactic| assume $x:ident : $type) => `(tactic| Fix₁ $x:ident : $type)
+  | `(tactic| assume $ident : $type) => `(tactic| Fix₁ $ident:ident : $type)
 
 syntax "suppose " term " as "ident : tactic
 
 macro_rules
-  | `(tactic| suppose $x:term as $id:ident) => `(tactic| Assume₁ $id:ident : $x:term)
+  | `(tactic| suppose $term as $ident) => `(tactic| Assume₁ $ident:ident : $term)
 
 declare_syntax_cat matitaJust
 

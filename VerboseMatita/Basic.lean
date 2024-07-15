@@ -77,13 +77,38 @@ infix:80 (priority := high) " ∩ " => intersect
 axiom ax_intersect1: ∀A B, ∀Z, (Z ∈ A ∩ B → Z ∈ A ∧ Z ∈ B)
 axiom ax_intersect2: ∀A B, ∀Z, (Z ∈ A ∧ Z ∈ B → Z ∈ A ∩ B)
 
--- matita
-theorem matita.reflexivity_inclusion: ∀A, A ⊆ A := by
+-- Proofs in matita
+namespace matita
+
+theorem reflexivity_inclusion: ∀A, A ⊆ A := by
  assume A:set
  we need to prove A ⊆ A that is equivalent to ∀Z, Z ∈ A → Z ∈ A
  assume Z:set
  suppose ZA : Z ∈ A
  by ZA done
+
+theorem empty_absurd: ∀X A, X ∈ ∅ → X ∈ A := by
+ Fix X A
+ Assume H: X ∈ ∅
+ By ax_empty applied to X using H we get K: False
+ Let's prove it's contradictory
+ We conclude by K
+
+theorem intersection_idempotent: ∀A, A ∩ A = A := by
+ assume A : set
+ By ax_extensionality it suffices to prove ∀Z, Z ∈ A ∩ A ↔ Z ∈ A
+ assume Z : set
+ apply Iff.intro -- ???
+ . suppose H : Z ∈ A ∩ A
+   by ax_intersect1 we proved (Z ∈ A ∩ A → Z ∈ A ∧ Z ∈ A) (K)
+   by K, H we proved (Z ∈ A ∧ Z ∈ A) (C)
+   by And.left, C done
+ . suppose H : Z ∈ A
+   by ax_intersect2, H done
+
+end matita
+
+-- Proofs in Lean/verbose-lean
 
 -- procedural proof
 theorem reflexivity_inclusion: ∀A, A ⊆ A := by
@@ -115,19 +140,6 @@ theorem empty_absurd: ∀X A, X ∈ ∅ → X ∈ A := by
  By ax_empty applied to X using H we get K: False
  Let's prove it's contradictory
  We conclude by K
-
--- matita
-theorem matita.intersection_idempotent: ∀A, A ∩ A = A := by
- assume A : set
- By ax_extensionality it suffices to prove ∀Z, Z ∈ A ∩ A ↔ Z ∈ A
- assume Z : set
- apply Iff.intro -- ???
- . suppose H : Z ∈ A ∩ A
-   by ax_intersect1 we proved (Z ∈ A ∩ A → Z ∈ A ∧ Z ∈ A) (K)
-   by K, H we proved (Z ∈ A ∧ Z ∈ A) (C)
-   by And.left, C done
- . suppose H : Z ∈ A
-   by ax_intersect2, H done
 
 end set_theory
 

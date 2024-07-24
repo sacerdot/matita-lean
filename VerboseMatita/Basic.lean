@@ -6,15 +6,28 @@ open Lean.Elab.Tactic
 
 namespace matita
 
+-- Bugs:
+--  assume/suppose fanno anche change per via di Verbose
+--  permettere di non dare nome a ipotesi in ... we proved
+--  matitaJust vuote :-(
+
+-- Todo:
+--  it suffices to prove
+--  eliminazione and/exists/iff
+--  introduzione and/iff
+--  we decide to prove
+
 syntax "assume " ident " : " term : tactic
 
 macro_rules
   | `(tactic| assume $ident : $type) => `(tactic| Fix₁ $ident:ident : $type)
 
-syntax "suppose " term " as "ident : tactic
+syntax "suppose " term (" as " ident)? : tactic
 
 macro_rules
   | `(tactic| suppose $term as $ident) => `(tactic| Assume₁ $ident:ident : $term)
+  | `(tactic| suppose $term) => `(tactic| intro)
+
 
 syntax "lastxxx" : term
 
@@ -34,7 +47,7 @@ elab_rules : term
 
 declare_syntax_cat matitaJust
 
-syntax "thus "? "by " ident,* : matitaJust
+syntax "thus "? ("by " ident,+)? : matitaJust
 
 def matitaJust_to_solveByElimArg : TSyntax `matitaJust -> MacroM (TSyntax ``Lean.Parser.Tactic.SolveByElim.args)
   | `(matitaJust | thus by $[$terms],* ) => do
@@ -42,14 +55,18 @@ def matitaJust_to_solveByElimArg : TSyntax `matitaJust -> MacroM (TSyntax ``Lean
     `(Lean.Parser.Tactic.SolveByElim.args| [$(args.push (← `(Lean.Parser.Tactic.SolveByElim.arg| lastxxx))),*])
   | `(matitaJust | by $[$terms],* ) =>
     `(Lean.Parser.Tactic.SolveByElim.args| [$[$terms:ident],*])
-  | _ => panic! "xxx" -- thereis  the right throwXXX
+  | `(matitaJust | thus ) =>
+    `(Lean.Parser.Tactic.SolveByElim.args| [lastxxx])
+--  | `(matitaJust | ) =>
+--    `(Lean.Parser.Tactic.SolveByElim.args| [])
+  | _ => -- panic! "xxx" -- thereis  the right throwXXX
+    `(Lean.Parser.Tactic.SolveByElim.args| [])
 
 syntax matitaJust " done" : tactic
 
 macro_rules
   | `(tactic | $mj:matitaJust done) => do
-    let x ← matitaJust_to_solveByElimArg mj
-    `(tactic | solve_by_elim only $x)
+    `(tactic | solve_by_elim only $(← matitaJust_to_solveByElimArg mj))
 
 syntax matitaJust " we " " proved " term " as " ident : tactic
 
@@ -120,13 +137,13 @@ theorem reflexivity_inclusion: ∀A, A ⊆ A := by
  assume A: set
  we need to prove A ⊆ A that is equivalent to ∀Z, Z ∈ A → Z ∈ A
  assume Z: set
- suppose Z ∈ A as ZA
- thus by done
+ suppose Z ∈ A
+ thus done
 
 theorem empty_absurd: ∀X A, X ∈ ∅ → X ∈ A := by
  assume X : set
  assume A : set
- suppose X ∈ ∅ as H
+ suppose X ∈ ∅
  thus by ax_empty done
 
 theorem intersection_idempotent: ∀A, A ∩ A = A := by
@@ -134,10 +151,10 @@ theorem intersection_idempotent: ∀A, A ∩ A = A := by
  By ax_extensionality it suffices to prove ∀Z, Z ∈ A ∩ A ↔ Z ∈ A
  assume Z : set
  apply Iff.intro -- ???
- . suppose Z ∈ A ∩ A as H
-   thus by ax_intersect1 we proved Z ∈ A ∧ Z ∈ A as C
+ . suppose Z ∈ A ∩ A
+   thus by ax_intersect1 we proved Z ∈ A ∧ Z ∈ A as C -- cambiare
    thus by And.left done
- . suppose Z ∈ A as H
+ . suppose Z ∈ A
    thus by ax_intersect2 done
 
 end matita

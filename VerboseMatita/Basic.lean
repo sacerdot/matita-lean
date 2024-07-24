@@ -15,21 +15,26 @@ syntax "suppose " term " as "ident : tactic
 macro_rules
   | `(tactic| suppose $term as $ident) => `(tactic| Assume₁ $ident:ident : $term)
 
+syntax "lastxxx" : term
+
 declare_syntax_cat matitaJust
 
-syntax "by " ident,* : matitaJust
+syntax "thus "? "by " ident,* : matitaJust
 
 syntax matitaJust " done" : tactic
 
 macro_rules
+  | `(tactic | thus by $[$terms],* done) =>
+   `(tactic| solve_by_elim only [$[$terms:ident],* ,lastxxx])
   | `(tactic | by $[$terms],* done) =>
    `(tactic| solve_by_elim only [$[$terms:ident],*])
+
 
 syntax matitaJust " we " " proved " term " as " ident : tactic
 
 macro_rules
-  | `(tactic | by $terms,* we proved $term as $ident) =>
-    `(tactic | have $ident : $term := by solve_by_elim only [$[$terms:ident],*])
+  | `(tactic | thus by $terms,* we proved $term as $ident) =>
+    `(tactic | have $ident : $term := by solve_by_elim only [$[$terms:ident],* ,lastxxx])
 
 declare_syntax_cat matitaEquivalent
 
@@ -43,15 +48,14 @@ macro_rules
  | `(tactic | we need to prove $exp that is equivalent to $inf) =>
   `(tactic | guard_target =ₛ $exp <;> change $inf)
 
-syntax "then " : tactic
+/-syntax "then " : tactic
 
 elab_rules : tactic
  |`(tactic| then) =>
    withMainContext do
     let x := (← getMainDecl).lctx.lastDecl.map (fun x ↦ x.toExpr)
-    Lean.addRawTrace x
+    Lean.addRawTrace x -/
 
-syntax "lastxxx" : term
 
 elab_rules : term
  |`(term| lastxxx) => do
@@ -114,22 +118,19 @@ axiom ax_intersect2: ∀A B, ∀Z, (Z ∈ A ∧ Z ∈ B → Z ∈ A ∩ B)
 namespace matita
 
 theorem reflexivity_inclusion: ∀A, A ⊆ A := by
- then
+ #check lastxxx
  assume A: set
  #check lastxxx
  we need to prove A ⊆ A that is equivalent to ∀Z, Z ∈ A → Z ∈ A
  assume Z: set
  suppose Z ∈ A as ZA
- #check lastxxx
- then
- by ZA done
- then
+ thus by done
 
 theorem empty_absurd: ∀X A, X ∈ ∅ → X ∈ A := by
  assume X : set
  assume A : set
  suppose X ∈ ∅ as H
- by ax_empty, H done
+ thus by ax_empty done
 
 theorem intersection_idempotent: ∀A, A ∩ A = A := by
  assume A : set
@@ -137,11 +138,10 @@ theorem intersection_idempotent: ∀A, A ∩ A = A := by
  assume Z : set
  apply Iff.intro -- ???
  . suppose Z ∈ A ∩ A as H
-   by ax_intersect1 we proved Z ∈ A ∩ A → Z ∈ A ∧ Z ∈ A as K
-   by K, H we proved Z ∈ A ∧ Z ∈ A as C
-   by And.left, C done
+   thus by ax_intersect1 we proved Z ∈ A ∧ Z ∈ A as C
+   thus by And.left done
  . suppose Z ∈ A as H
-   by ax_intersect2, H done
+   thus by ax_intersect2 done
 
 end matita
 

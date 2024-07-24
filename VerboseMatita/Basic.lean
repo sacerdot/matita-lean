@@ -1,6 +1,7 @@
 import Lean -- To allow Ctrl+Click over Lean syntax
 import Verbose.English.All
 
+open Lean
 open Lean.Elab.Tactic
 
 namespace matita
@@ -17,24 +18,45 @@ macro_rules
 
 syntax "lastxxx" : term
 
+/-elab_rules : term
+ |`(term| lastxxx) => do
+    let x := (← Lean.getLCtx).lastDecl.map (fun x ↦ x.toExpr)
+    Lean.addRawTrace x
+    x -/
+
+elab_rules : term
+ |`(term| lastxxx) => do (← Lean.getLCtx).lastDecl.map (fun x ↦ x.toExpr) -- bug here exclude recursive call to theorem
+
+-- one more bug here
+--macro_rules
+--  | `(matitaJust | by ) =>
+--    `(Lean.Parser.Tactic.SolveByElim.arg | [])
+
 declare_syntax_cat matitaJust
 
 syntax "thus "? "by " ident,* : matitaJust
 
+def matitaJust_to_solveByElimArg : TSyntax `matitaJust -> MacroM (TSyntax ``Lean.Parser.Tactic.SolveByElim.args)
+  | `(matitaJust | thus by $[$terms],* ) => do
+    let args ← terms.mapM fun x => `(Lean.Parser.Tactic.SolveByElim.arg| $x:ident)
+    `(Lean.Parser.Tactic.SolveByElim.args| [$(args.push (← `(Lean.Parser.Tactic.SolveByElim.arg| lastxxx))),*])
+  | `(matitaJust | by $[$terms],* ) =>
+    `(Lean.Parser.Tactic.SolveByElim.args| [$[$terms:ident],*])
+  | _ => panic! "xxx" -- thereis  the right throwXXX
+
 syntax matitaJust " done" : tactic
 
 macro_rules
-  | `(tactic | thus by $[$terms],* done) =>
-   `(tactic| solve_by_elim only [$[$terms:ident],* ,lastxxx])
-  | `(tactic | by $[$terms],* done) =>
-   `(tactic| solve_by_elim only [$[$terms:ident],*])
-
+  | `(tactic | $mj:matitaJust done) => do
+    let x ← matitaJust_to_solveByElimArg mj
+    `(tactic | solve_by_elim only $x)
 
 syntax matitaJust " we " " proved " term " as " ident : tactic
 
 macro_rules
-  | `(tactic | thus by $terms,* we proved $term as $ident) =>
-    `(tactic | have $ident : $term := by solve_by_elim only [$[$terms:ident],* ,lastxxx])
+  | `(tactic | $mj:matitaJust we proved $term as $ident) => do
+    let x ← matitaJust_to_solveByElimArg mj
+    `(tactic | have $ident : $term := by solve_by_elim only $x)
 
 declare_syntax_cat matitaEquivalent
 
@@ -48,35 +70,13 @@ macro_rules
  | `(tactic | we need to prove $exp that is equivalent to $inf) =>
   `(tactic | guard_target =ₛ $exp <;> change $inf)
 
-/-syntax "then " : tactic
+/-
 
 elab_rules : tactic
  |`(tactic| then) =>
    withMainContext do
     let x := (← getMainDecl).lctx.lastDecl.map (fun x ↦ x.toExpr)
     Lean.addRawTrace x -/
-
-
-elab_rules : term
- |`(term| lastxxx) => do
-    let x := (← Lean.MonadLCtx.getLCtx).lastDecl.map (fun x ↦ x.toExpr)
-    Lean.addRawTrace x
-    x
-
-/- def THEN : Unit → tacticM Unit
-def introObj (mvarId : MVarId) (name : Name) : MetaM (FVarId × MVarId) := do
-  let tgt ← whnf (← mvarId.getType)
-  if tgt.isForall ∨ tgt.isLet then
-    let (fvar, newmvarId) ← mvarId.intro name
-    newmvarId.withContext do
-      let t := (← fvar.getDecl).type
-      if (← inferType t).isProp then
-        throwError ← noObjectIntro
-      else
-        pure (fvar, newmvarId)
-  else
-    throwError ← noObjectIntro -/
-
 
 /-macro_rules
  | `(tactic|then) =>
@@ -113,14 +113,11 @@ axiom intersect: set → set → set
 infix:80 (priority := high) " ∩ " => intersect
 axiom ax_intersect1: ∀A B, ∀Z, (Z ∈ A ∩ B → Z ∈ A ∧ Z ∈ B)
 axiom ax_intersect2: ∀A B, ∀Z, (Z ∈ A ∧ Z ∈ B → Z ∈ A ∩ B)
-
 -- Proofs in matita
 namespace matita
 
 theorem reflexivity_inclusion: ∀A, A ⊆ A := by
- #check lastxxx
  assume A: set
- #check lastxxx
  we need to prove A ⊆ A that is equivalent to ∀Z, Z ∈ A → Z ∈ A
  assume Z: set
  suppose Z ∈ A as ZA

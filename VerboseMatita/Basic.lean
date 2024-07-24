@@ -1,6 +1,8 @@
 import Lean -- To allow Ctrl+Click over Lean syntax
 import Verbose.English.All
 
+open Lean.Elab.Tactic
+
 namespace matita
 
 syntax "assume " ident " : " term : tactic
@@ -41,6 +43,41 @@ macro_rules
  | `(tactic | we need to prove $exp that is equivalent to $inf) =>
   `(tactic | guard_target =ₛ $exp <;> change $inf)
 
+syntax "then " : tactic
+
+elab_rules : tactic
+ |`(tactic| then) =>
+   withMainContext do
+    let x := (← getMainDecl).lctx.lastDecl.map (fun x ↦ x.toExpr)
+    Lean.addRawTrace x
+
+syntax "lastxxx" : term
+
+elab_rules : term
+ |`(term| lastxxx) => do
+    let x := (← Lean.MonadLCtx.getLCtx).lastDecl.map (fun x ↦ x.toExpr)
+    Lean.addRawTrace x
+    x
+
+/- def THEN : Unit → tacticM Unit
+def introObj (mvarId : MVarId) (name : Name) : MetaM (FVarId × MVarId) := do
+  let tgt ← whnf (← mvarId.getType)
+  if tgt.isForall ∨ tgt.isLet then
+    let (fvar, newmvarId) ← mvarId.intro name
+    newmvarId.withContext do
+      let t := (← fvar.getDecl).type
+      if (← inferType t).isProp then
+        throwError ← noObjectIntro
+      else
+        pure (fvar, newmvarId)
+  else
+    throwError ← noObjectIntro -/
+
+
+/-macro_rules
+ | `(tactic|then) =>
+  `(tactic| trace "ciao") -/
+
 end matita
 
 -- By ax_inclusion2 it suffices to prove that ∀Z, Z ∈ A → Z ∈ A
@@ -77,11 +114,16 @@ axiom ax_intersect2: ∀A B, ∀Z, (Z ∈ A ∧ Z ∈ B → Z ∈ A ∩ B)
 namespace matita
 
 theorem reflexivity_inclusion: ∀A, A ⊆ A := by
+ then
  assume A: set
+ #check lastxxx
  we need to prove A ⊆ A that is equivalent to ∀Z, Z ∈ A → Z ∈ A
  assume Z: set
  suppose Z ∈ A as ZA
+ #check lastxxx
+ then
  by ZA done
+ then
 
 theorem empty_absurd: ∀X A, X ∈ ∅ → X ∈ A := by
  assume X : set

@@ -16,10 +16,19 @@ namespace matita
 --  we decide to prove
 --  we proceed by cases
 --  eliminazione dell'assurdo
+--  suppose ... that is equivalent to
 
 -- Ugly:
 --  code duplication for empty matitaJust
 --  code duplication for omitting name of hypothesis in "we proved"
+
+-- Implemented:
+--  assume
+--  suppose
+--  done
+--  we proved
+--  we need to prove
+--  we claim ... as ... by ...
 
 syntax "assume " ident " : " term : tactic
 
@@ -113,6 +122,9 @@ elab_rules : tactic
  | `(tactic|then) =>
   `(tactic| trace "ciao") -/
 
+macro "we " "claim " stmt:term "as " name:ident "by" colGt prf:tacticSeq : tactic => `(tactic|have $name : $stmt := by $prf)
+macro "we " "claim " stmt:term                  "by" colGt prf:tacticSeq : tactic => `(tactic|have _ : $stmt := by $prf)
+
 end matita
 
 -- By ax_inclusion2 it suffices to prove that ∀Z, Z ∈ A → Z ∈ A
@@ -144,6 +156,7 @@ axiom intersect: set → set → set
 infix:80 (priority := high) " ∩ " => intersect
 axiom ax_intersect1: ∀A B, ∀Z, (Z ∈ A ∩ B → Z ∈ A ∧ Z ∈ B)
 axiom ax_intersect2: ∀A B, ∀Z, (Z ∈ A ∧ Z ∈ B → Z ∈ A ∩ B)
+
 -- Proofs in matita
 namespace matita
 

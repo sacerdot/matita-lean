@@ -8,14 +8,18 @@ namespace matita
 
 -- Bugs:
 --  assume/suppose fanno anche change per via di Verbose
---  permettere di non dare nome a ipotesi in ... we proved
---  matitaJust vuote :-(
 
 -- Todo:
 --  it suffices to prove
 --  eliminazione and/exists/iff
 --  introduzione and/iff
 --  we decide to prove
+--  we proceed by cases
+--  eliminazione dell'assurdo
+
+-- Ugly:
+--  code duplication for empty matitaJust
+--  code duplication for omitting name of hypothesis in "we proved"
 
 syntax "assume " ident " : " term : tactic
 
@@ -29,16 +33,16 @@ macro_rules
   | `(tactic| suppose $term) => `(tactic| intro)
 
 
-syntax "lastxxx" : term
+syntax "_last_hypothesis_" : term
 
 /-elab_rules : term
- |`(term| lastxxx) => do
+ |`(term| _last_hypothesis_) => do
     let x := (← Lean.getLCtx).lastDecl.map (fun x ↦ x.toExpr)
     Lean.addRawTrace x
     x -/
 
 elab_rules : term
- |`(term| lastxxx) => do (← Lean.getLCtx).lastDecl.map (fun x ↦ x.toExpr) -- bug here exclude recursive call to theorem
+ |`(term| _last_hypothesis_) => do (← Lean.getLCtx).lastDecl.map (fun x ↦ x.toExpr) -- bug here exclude recursive call to theorem
 
 -- one more bug here
 --macro_rules
@@ -52,11 +56,11 @@ syntax "thus "? ("by " ident,+)? : matitaJust
 def matitaJust_to_solveByElimArg : TSyntax `matitaJust -> MacroM (TSyntax ``Lean.Parser.Tactic.SolveByElim.args)
   | `(matitaJust | thus by $[$terms],* ) => do
     let args ← terms.mapM fun x => `(Lean.Parser.Tactic.SolveByElim.arg| $x:ident)
-    `(Lean.Parser.Tactic.SolveByElim.args| [$(args.push (← `(Lean.Parser.Tactic.SolveByElim.arg| lastxxx))),*])
+    `(Lean.Parser.Tactic.SolveByElim.args| [$(args.push (← `(Lean.Parser.Tactic.SolveByElim.arg| _last_hypothesis_))),*])
   | `(matitaJust | by $[$terms],* ) =>
     `(Lean.Parser.Tactic.SolveByElim.args| [$[$terms:ident],*])
   | `(matitaJust | thus ) =>
-    `(Lean.Parser.Tactic.SolveByElim.args| [lastxxx])
+    `(Lean.Parser.Tactic.SolveByElim.args| [_last_hypothesis_])
 --  | `(matitaJust | ) =>
 --    `(Lean.Parser.Tactic.SolveByElim.args| [])
   | _ => -- panic! "xxx" -- thereis  the right throwXXX
@@ -67,8 +71,10 @@ syntax matitaJust " done" : tactic
 macro_rules
   | `(tactic | $mj:matitaJust done) => do
     `(tactic | solve_by_elim only $(← matitaJust_to_solveByElimArg mj))
+  | `(tactic | done) => do
+    `(tactic | solve_by_elim only [])
 
-syntax matitaJust " we " " proved " term (" as " ident)? : tactic
+syntax (matitaJust)? " we " " proved " term (" as " ident)? : tactic
 
 -- duplicated code, not nice
 macro_rules
@@ -78,6 +84,10 @@ macro_rules
   | `(tactic | $mj:matitaJust we proved $term) => do
     let x ← matitaJust_to_solveByElimArg mj
     `(tactic | have _ : $term := by solve_by_elim only $x)
+  | `(tactic | we proved $term as $ident) =>
+    `(tactic | have $ident : $term := by solve_by_elim only [])
+  | `(tactic | we proved $term) =>
+    `(tactic | have _ : $term := by solve_by_elim only [])
 
 declare_syntax_cat matitaEquivalent
 

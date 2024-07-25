@@ -13,7 +13,6 @@ namespace matita
 --  it suffices to prove
 --  eliminazione and/exists/iff
 --  introduzione and/iff
---  we decide to prove
 --  we proceed by cases
 --  eliminazione dell'assurdo
 --  suppose ... that is equivalent to

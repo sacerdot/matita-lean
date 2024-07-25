@@ -68,12 +68,16 @@ macro_rules
   | `(tactic | $mj:matitaJust done) => do
     `(tactic | solve_by_elim only $(← matitaJust_to_solveByElimArg mj))
 
-syntax matitaJust " we " " proved " term " as " ident : tactic
+syntax matitaJust " we " " proved " term (" as " ident)? : tactic
 
+-- duplicated code, not nice
 macro_rules
   | `(tactic | $mj:matitaJust we proved $term as $ident) => do
     let x ← matitaJust_to_solveByElimArg mj
     `(tactic | have $ident : $term := by solve_by_elim only $x)
+  | `(tactic | $mj:matitaJust we proved $term) => do
+    let x ← matitaJust_to_solveByElimArg mj
+    `(tactic | have _ : $term := by solve_by_elim only $x)
 
 declare_syntax_cat matitaEquivalent
 
@@ -152,7 +156,7 @@ theorem intersection_idempotent: ∀A, A ∩ A = A := by
  assume Z : set
  apply Iff.intro -- ???
  . suppose Z ∈ A ∩ A
-   thus by ax_intersect1 we proved Z ∈ A ∧ Z ∈ A as C -- cambiare
+   thus by ax_intersect1 we proved Z ∈ A ∧ Z ∈ A
    thus by And.left done
  . suppose Z ∈ A
    thus by ax_intersect2 done

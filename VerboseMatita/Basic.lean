@@ -10,12 +10,12 @@ namespace matita
 --  assume/suppose fanno anche change per via di Verbose
 --  "it suffices to prove" (because of Verbose)
 --  by ... not very strong
+--  case is bugged
 
 -- Todo:
 --  eliminazione and/exists/iff
 --  introduzione and/iff
---  we proceed by cases
---  eliminazione dell'assurdo
+--  eliminazione dell'assurdo (sembra andare done?)
 --  suppose ... that is equivalent to
 
 -- Ugly:
@@ -29,6 +29,9 @@ namespace matita
 --  we proved
 --  we need to prove
 --  we claim ... as ... by ...
+--  we proceed by cases on
+--  case
+--  by it suffice to prove
 
 -- Debugging:
 --  logInfo          chiamata

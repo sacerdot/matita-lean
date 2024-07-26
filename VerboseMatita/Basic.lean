@@ -7,20 +7,21 @@ open Lean.Elab.Tactic
 namespace matita
 
 -- Bugs:
---  assume/suppose fanno anche change per via di Verbose
---  "it suffices to prove" (because of Verbose)
+--  assume/suppose: enforce that the type is the expected one
+--  "it suffices to prove"/"such that" (because of Verbose)
 --  by ... not very strong
 --  case is bugged
+--  and/exist elim: enforce that the type is the expected one
 
 -- Todo:
---  eliminazione exists/iff
+--  eliminazione iff
 --  eliminazione dell'assurdo (sembra andare done?)
 --  suppose ... that is equivalent to
 --  case tactics that makes the hypothesis explicit
 --  introduzione dell'esiste
 
 -- Ugly:
---  code duplication for empty matitaJust
+--  code duplication for empty matitaJust ; may use obviously? or a _empty_ thing?
 --  code duplication for omitting name of hypothesis in "we proved"
 --  code duplication for using Or.inl, Or.inr automatically in solve_by_elim
 
@@ -36,6 +37,7 @@ namespace matita
 --  by it suffice to prove
 --  we split the proof
 --  we proved .. and ..
+--  let .. such that
 
 -- Debugging:
 --  logInfo          chiamata
@@ -99,9 +101,12 @@ macro_rules
   | `(tactic | done) => do
     `(tactic | solve_by_elim only [Or.inr, Or.inl])
 
-syntax (matitaJust)? " we " " proved " term ("as " ident)? : tactic
-syntax (matitaJust)? " we " " proved " term "as " ident "and " term "as " ident : tactic
+syntax (matitaJust)? "we " " proved " term ("as " ident)? : tactic
+syntax (matitaJust)? "we " " proved " term "as " ident "and " term "as " ident : tactic
+syntax (matitaJust)? "let " ident ": " term "such that " term "as " ident : tactic
+
 -- duplicated code, not nice
+-- idea: factorize a bit using a _empty_matita_just ?  or just use obviously?
 macro_rules
   | `(tactic | $mj:matitaJust we proved $term as $ident) => do
     let x ← matitaJust_to_solveByElimArg mj
@@ -115,6 +120,12 @@ macro_rules
     `(tactic | have _ : $term := by solve_by_elim only [Or.inr, Or.inl])
   | `(tactic | $mj:matitaJust we proved $term₁ as $ident₁ and $term₂ as $ident₂) =>
     `(tactic | $mj:matitaJust we proved $term₁ ∧ $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
+  | `(tactic | we proved $term₁ as $ident₁ and $term₂ as $ident₂) =>
+    `(tactic | we proved $term₁ ∧ $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
+  | `(tactic | $mj:matitaJust let $ident₁ : $term₁ such that $term₂ as $ident₂) =>
+    `(tactic | $mj:matitaJust we proved ∃$ident₁:ident : $term₁, $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
+  | `(tactic | let $ident₁ : $term₁ such that $term₂ as $ident₂) =>
+    `(tactic | we proved ∃$ident₁:ident : $term₁, $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
 
 declare_syntax_cat matitaEquivalent
 
@@ -228,6 +239,11 @@ theorem union_symmetric: ∀A B, A ∪ B = B ∪ A := by
      thus by ax_union2 done
    . case a.mpr.inr H
      thus by ax_union2 done
+
+theorem exists_example: (∃A, A ∈ ∅) → False := by
+ suppose ∃A, A ∈ ∅
+ thus let A : set such that A ∈ ∅ as H
+ thus by ax_empty done
 
 -- theorem intersect_empty: ∀A. A ∩ ∅ = ∅.
 -- theorem transitivity_inclusion: ∀A,B,C. A ⊆ B → B ⊆ C → A ⊆ C.

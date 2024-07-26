@@ -16,6 +16,7 @@ namespace matita
 --  eliminazione and/exists/iff
 --  eliminazione dell'assurdo (sembra andare done?)
 --  suppose ... that is equivalent to
+--  case tactics that makes the hypothesis explicit
 
 -- Ugly:
 --  code duplication for empty matitaJust
@@ -36,6 +37,15 @@ namespace matita
 -- Debugging:
 --  logInfo          chiamata
 --  trace            tattica
+--  Lean.addRawTrace
+
+-- Tactics example:
+-- elab_rules : tactic
+-- |`(tactic| then) =>
+--   withMainContext do
+--    let x := (← getMainDecl).lctx.lastDecl.map (fun x ↦ x.toExpr)
+--    Lean.addRawTrace x -/
+
 
 syntax "assume " ident " : " term : tactic
 
@@ -50,12 +60,6 @@ macro_rules
 
 
 syntax "_last_hypothesis_" : term
-
-/-elab_rules : term
- |`(term| _last_hypothesis_) => do
-    let x := (← Lean.getLCtx).lastDecl.map (fun x ↦ x.toExpr)
-    Lean.addRawTrace x
-    x -/
 
 elab_rules : term
  |`(term| _last_hypothesis_) => do (← Lean.getLCtx).lastDecl.map (fun x ↦ x.toExpr) -- bug here exclude recursive call to theorem
@@ -90,8 +94,8 @@ macro_rules
   | `(tactic | done) => do
     `(tactic | solve_by_elim only [])
 
-syntax (matitaJust)? " we " " proved " term (" as " ident)? : tactic
-
+syntax (matitaJust)? " we " " proved " term ("as " ident)? : tactic
+syntax (matitaJust)? " we " " proved " term "as " ident "and " term "as " ident : tactic
 -- duplicated code, not nice
 macro_rules
   | `(tactic | $mj:matitaJust we proved $term as $ident) => do
@@ -104,6 +108,8 @@ macro_rules
     `(tactic | have $ident : $term := by solve_by_elim only [])
   | `(tactic | we proved $term) =>
     `(tactic | have _ : $term := by solve_by_elim only [])
+  | `(tactic | thus by $id we proved $term₁ as $ident₁ and $term₂ as $ident₂) =>
+    `(tactic | thus by $id we proved $term₁ ∧ $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
 
 declare_syntax_cat matitaEquivalent
 
@@ -119,21 +125,12 @@ macro_rules
 
 macro "we " "split " "the " "proof " : tactic => `(tactic| first | apply And.intro | apply Iff.intro)
 
-/-
-
-elab_rules : tactic
- |`(tactic| then) =>
-   withMainContext do
-    let x := (← getMainDecl).lctx.lastDecl.map (fun x ↦ x.toExpr)
-    Lean.addRawTrace x -/
-
-
 macro "we " "claim " stmt:term "as " name:ident "by" colGt prf:tacticSeq : tactic => `(tactic|have $name : $stmt := by $prf)
 macro "we " "claim " stmt:term                  "by" colGt prf:tacticSeq : tactic => `(tactic|have _ : $stmt := by $prf)
 
 macro "we " "proceed " "by " "cases " "on " name:ident "to " "prove " stmt:term : tactic => `(tactic|guard_target =ₛ $stmt <;> cases $name:term)
 
-syntax "by " term "it suffices to prove " term : tactic -- why xit works and it no?
+syntax "by " term "it suffices to prove " term : tactic -- "it suffices to prove " is a keyword in Verbose
 
 elab_rules : tactic
  | `(tactic| by $term:term it suffices to prove $arg) => bySufficesTac term #[arg]
@@ -197,8 +194,8 @@ theorem intersection_idempotent: ∀A, A ∩ A = A := by
  we split the proof
  . we need to prove Z ∈ A ∩ A → Z ∈ A
    suppose Z ∈ A ∩ A
-   thus by ax_intersect1 we proved Z ∈ A ∧ Z ∈ A
-   thus by And.left done
+   thus by ax_intersect1 we proved Z ∈ A as H₁ and Z ∈ A as H₂
+   thus done
  . we need to prove Z ∈ A → Z ∈ A ∩ A
    suppose Z ∈ A
    thus by ax_intersect2 done

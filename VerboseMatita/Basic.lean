@@ -14,7 +14,6 @@ namespace matita
 
 -- Todo:
 --  eliminazione and/exists/iff
---  introduzione and/iff
 --  eliminazione dell'assurdo (sembra andare done?)
 --  suppose ... that is equivalent to
 
@@ -32,6 +31,7 @@ namespace matita
 --  we proceed by cases on
 --  case
 --  by it suffice to prove
+--  we split the proof
 
 -- Debugging:
 --  logInfo          chiamata
@@ -117,6 +117,8 @@ macro_rules
  | `(tactic | we need to prove $exp that is equivalent to $inf) =>
   `(tactic | guard_target =ₛ $exp <;> change $inf)
 
+macro "we " "split " "the " "proof " : tactic => `(tactic| first | apply And.intro | apply Iff.intro)
+
 /-
 
 elab_rules : tactic
@@ -192,7 +194,7 @@ theorem intersection_idempotent: ∀A, A ∩ A = A := by
  assume A : set
  by ax_extensionality it suffices to prove ∀Z, Z ∈ A ∩ A ↔ Z ∈ A
  assume Z : set
- apply Iff.intro -- ???
+ we split the proof
  . we need to prove Z ∈ A ∩ A → Z ∈ A
    suppose Z ∈ A ∩ A
    thus by ax_intersect1 we proved Z ∈ A ∧ Z ∈ A
@@ -206,8 +208,9 @@ theorem union_symmetric: ∀A B, A ∪ B = B ∪ A := by
  assume B : set
  by ax_extensionality it suffices to prove ∀Z, Z ∈ A ∪ B ↔ Z ∈ B ∪ A
  assume Z : set
- apply Iff.intro -- ???
- . suppose Z ∈ A ∪ B
+ we split the proof
+ . we need to prove Z ∈ A ∪ B → Z ∈ B ∪ A
+   suppose Z ∈ A ∪ B
    thus by ax_union1 we proved Z ∈ A ∨ Z ∈ B as H
    we proceed by cases on H to prove Z ∈ B ∪ A
    . case a.mp.inl H
@@ -216,7 +219,8 @@ theorem union_symmetric: ∀A B, A ∪ B = B ∪ A := by
    . case a.mp.inr H
      thus by Or.inr we proved Z ∈ B ∨ Z ∈ A
      thus by ax_union2 done
- . suppose Z ∈ B ∪ A
+ . we need to prove Z ∈ B ∪ A → Z ∈ A ∪ B
+   suppose Z ∈ B ∪ A
    thus by ax_union1 we proved Z ∈ B ∨ Z ∈ A as H
    we proceed by cases on H to prove Z ∈ A ∪ B
    . case a.mpr.inl H

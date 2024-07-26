@@ -17,10 +17,12 @@ namespace matita
 --  eliminazione dell'assurdo (sembra andare done?)
 --  suppose ... that is equivalent to
 --  case tactics that makes the hypothesis explicit
+--  introduzione dell'esiste
 
 -- Ugly:
 --  code duplication for empty matitaJust
 --  code duplication for omitting name of hypothesis in "we proved"
+--  code duplication for using Or.inl, Or.inr automatically in solve_by_elim
 
 -- Implemented:
 --  assume
@@ -74,18 +76,20 @@ declare_syntax_cat matitaJust
 
 syntax "thus "? ("by " ident,+)? : matitaJust
 
+-- simplify the code now that after by the list must be non empty?
+-- factorize Or.inr/Or.inl
 def matitaJust_to_solveByElimArg : TSyntax `matitaJust -> MacroM (TSyntax ``Lean.Parser.Tactic.SolveByElim.args)
   | `(matitaJust | thus by $[$terms],* ) => do
     let args ← terms.mapM fun x => `(Lean.Parser.Tactic.SolveByElim.arg| $x:ident)
-    `(Lean.Parser.Tactic.SolveByElim.args| [$(args.push (← `(Lean.Parser.Tactic.SolveByElim.arg| _last_hypothesis_))),*])
+    `(Lean.Parser.Tactic.SolveByElim.args| [$(args.push (← `(Lean.Parser.Tactic.SolveByElim.arg| _last_hypothesis_))),*, Or.inr, Or.inl])
   | `(matitaJust | by $[$terms],* ) =>
-    `(Lean.Parser.Tactic.SolveByElim.args| [$[$terms:ident],*])
+    `(Lean.Parser.Tactic.SolveByElim.args| [$[$terms:ident],*, Or.inr, Or.inl])
   | `(matitaJust | thus ) =>
-    `(Lean.Parser.Tactic.SolveByElim.args| [_last_hypothesis_])
+    `(Lean.Parser.Tactic.SolveByElim.args| [_last_hypothesis_, Or.inr, Or.inl])
 --  | `(matitaJust | ) =>
 --    `(Lean.Parser.Tactic.SolveByElim.args| [])
   | _ => -- panic! "xxx" -- thereis  the right throwXXX
-    `(Lean.Parser.Tactic.SolveByElim.args| [])
+    `(Lean.Parser.Tactic.SolveByElim.args| [Or.inr, Or.inl])
 
 syntax matitaJust " done" : tactic
 
@@ -93,7 +97,7 @@ macro_rules
   | `(tactic | $mj:matitaJust done) => do
     `(tactic | solve_by_elim only $(← matitaJust_to_solveByElimArg mj))
   | `(tactic | done) => do
-    `(tactic | solve_by_elim only [])
+    `(tactic | solve_by_elim only [Or.inr, Or.inl])
 
 syntax (matitaJust)? " we " " proved " term ("as " ident)? : tactic
 syntax (matitaJust)? " we " " proved " term "as " ident "and " term "as " ident : tactic
@@ -106,9 +110,9 @@ macro_rules
     let x ← matitaJust_to_solveByElimArg mj
     `(tactic | have _ : $term := by solve_by_elim only $x)
   | `(tactic | we proved $term as $ident) =>
-    `(tactic | have $ident : $term := by solve_by_elim only [])
+    `(tactic | have $ident : $term := by solve_by_elim only [Or.inr, Or.inl])
   | `(tactic | we proved $term) =>
-    `(tactic | have _ : $term := by solve_by_elim only [])
+    `(tactic | have _ : $term := by solve_by_elim only [Or.inr, Or.inl])
   | `(tactic | $mj:matitaJust we proved $term₁ as $ident₁ and $term₂ as $ident₂) =>
     `(tactic | $mj:matitaJust we proved $term₁ ∧ $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
 
@@ -212,20 +216,17 @@ theorem union_symmetric: ∀A B, A ∪ B = B ∪ A := by
    thus by ax_union1 we proved Z ∈ A ∨ Z ∈ B as H
    we proceed by cases on H to prove Z ∈ B ∪ A
    . case a.mp.inl H
-     thus by Or.inr we proved Z ∈ B ∨ Z ∈ A
+     -- thus we proved Z ∈ B ∨ Z ∈ A
      thus by ax_union2 done
    . case a.mp.inr H
-     thus by Or.inr we proved Z ∈ B ∨ Z ∈ A
      thus by ax_union2 done
  . we need to prove Z ∈ B ∪ A → Z ∈ A ∪ B
    suppose Z ∈ B ∪ A
    thus by ax_union1 we proved Z ∈ B ∨ Z ∈ A as H
    we proceed by cases on H to prove Z ∈ A ∪ B
    . case a.mpr.inl H
-     thus by Or.inr we proved Z ∈ A ∨ Z ∈ B
      thus by ax_union2 done
    . case a.mpr.inr H
-     thus by Or.inr we proved Z ∈ A ∨ Z ∈ B
      thus by ax_union2 done
 
 -- theorem intersect_empty: ∀A. A ∩ ∅ = ∅.

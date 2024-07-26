@@ -15,7 +15,8 @@ namespace matita
 
 -- Todo:
 --  eliminazione iff
---  eliminazione dell'assurdo (sembra andare done?)
+--  eliminazione dell'assurdo: done works good? add other syntax like "absurdum"? try to remove it from
+--     solve_by_elim? (possibly impossible?)
 --  suppose ... that is equivalent to
 --  case tactics that makes the hypothesis explicit
 --  introduzione dell'esiste
@@ -240,10 +241,11 @@ theorem union_symmetric: ∀A B, A ∪ B = B ∪ A := by
    . case a.mpr.inr H
      thus by ax_union2 done
 
-theorem exists_example: (∃A, A ∈ ∅) → False := by
+theorem exists_example: (∃A, A ∈ ∅) → ∀A, A ∈ A := by
  suppose ∃A, A ∈ ∅
  thus let A : set such that A ∈ ∅ as H
- thus by ax_empty done
+ thus by ax_empty we proved False
+ thus done -- absurd elimination
 
 -- theorem intersect_empty: ∀A. A ∩ ∅ = ∅.
 -- theorem transitivity_inclusion: ∀A,B,C. A ⊆ B → B ⊆ C → A ⊆ C.

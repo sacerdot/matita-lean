@@ -245,7 +245,7 @@ theorem exists_example: (∃A, A ∈ ∅) → ∀A, A ∈ A := by
  suppose ∃A, A ∈ ∅
  thus let A : set such that A ∈ ∅ as H
  thus by ax_empty we proved False
- thus done -- absurd elimination
+ thus done -- absurd elimination used here
 
 -- theorem intersect_empty: ∀A. A ∩ ∅ = ∅.
 -- theorem transitivity_inclusion: ∀A,B,C. A ⊆ B → B ⊆ C → A ⊆ C.

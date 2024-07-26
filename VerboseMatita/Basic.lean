@@ -13,7 +13,7 @@ namespace matita
 --  case is bugged
 
 -- Todo:
---  eliminazione and/exists/iff
+--  eliminazione exists/iff
 --  eliminazione dell'assurdo (sembra andare done?)
 --  suppose ... that is equivalent to
 --  case tactics that makes the hypothesis explicit
@@ -33,6 +33,7 @@ namespace matita
 --  case
 --  by it suffice to prove
 --  we split the proof
+--  we proved .. and ..
 
 -- Debugging:
 --  logInfo          chiamata
@@ -108,8 +109,8 @@ macro_rules
     `(tactic | have $ident : $term := by solve_by_elim only [])
   | `(tactic | we proved $term) =>
     `(tactic | have _ : $term := by solve_by_elim only [])
-  | `(tactic | thus by $id we proved $term₁ as $ident₁ and $term₂ as $ident₂) =>
-    `(tactic | thus by $id we proved $term₁ ∧ $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
+  | `(tactic | $mj:matitaJust we proved $term₁ as $ident₁ and $term₂ as $ident₂) =>
+    `(tactic | $mj:matitaJust we proved $term₁ ∧ $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
 
 declare_syntax_cat matitaEquivalent
 

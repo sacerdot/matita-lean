@@ -15,13 +15,14 @@ namespace matita
 --  solve_by_elim only L  is weak (does not add new hypotheses to L)
 
 -- Todo:
+--  is suffices to prove: implement using matitaJust
 --  eliminazione dell'assurdo: done works good? add other syntax like "absurdum"? try to remove it from
 --     solve_by_elim? (possibly impossible?)
 --  suppose ... that is equivalent to
 --  case tactics that makes the hypothesis explicit
 --  introduzione dell'esiste
 --  letin
---  that is equivalent to after by just we proved, that is equivalent to e le premesse introdotte da and_e
+--  that is equivalent to after by just we proved, that is equivalent to, it suffices to prove e le premesse introdotte da and_e
 --  we proceed by induction on
 --  we proceed by cases on
 --  by induction hypothesis we know
@@ -151,7 +152,7 @@ macro_rules
  | `(tactic | we need to prove $term) =>
   `(tactic | guard_target =ₛ $term)
  | `(tactic | we need to prove $exp that is equivalent to $inf) =>
-  `(tactic | guard_target =ₛ $exp <;> change $inf)
+  `(tactic | we need to prove $exp <;> change $inf)
 
 macro "we " "split " "the " "proof " : tactic => `(tactic| first | apply And.intro | apply Iff.intro)
 
@@ -291,10 +292,8 @@ theorem iff_example2: ∀A B: Prop, (A ↔ B) → (B ↔ A) := by
    by H₁ done
 
 -- theorem intersect_empty: ∀A. A ∩ ∅ = ∅.
--- theorem transitivity_inclusion: ∀A,B,C. A ⊆ B → B ⊆ C → A ⊆ C.
 -- theorem antisymmetry_inclusion: ∀A,B. A ⊆ B → B ⊆ A → A = B.
 -- theorem intersect_commutative: ∀A,B. A ∩ B = B ∩ A.
---
 
 end matita
 

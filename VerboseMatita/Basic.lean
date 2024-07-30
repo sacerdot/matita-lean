@@ -20,6 +20,12 @@ namespace matita
 --  suppose ... that is equivalent to
 --  case tactics that makes the hypothesis explicit
 --  introduzione dell'esiste
+--  letin
+--  that is equivalent to after assume, suppose, we need to prove, by just we proved,the thesis becomes, that is equivalent to.
+--  we proceed by induction on
+--  we proceed by cases on
+--  by induction hypothesis we know
+--  conclude/obtain/=
 
 -- Ugly:
 --  code duplication for empty matitaJust ; may use obviously? or a _empty_ thing?

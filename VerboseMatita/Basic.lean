@@ -12,9 +12,9 @@ namespace matita
 --  by ... not very strong
 --  case is bugged
 --  and/exist elim: enforce that the type is the expected one
+--  solve_by_elim only L  is weak (does not add new hypotheses to L)
 
 -- Todo:
---  eliminazione iff
 --  eliminazione dell'assurdo: done works good? add other syntax like "absurdum"? try to remove it from
 --     solve_by_elim? (possibly impossible?)
 --  suppose ... that is equivalent to
@@ -75,6 +75,9 @@ elab_rules : term
 --  | `(matitaJust | by ) =>
 --    `(Lean.Parser.Tactic.SolveByElim.arg | [])
 
+theorem iff_e: ∀A B: Prop, (A ↔ B) → (A → B) ∧ (B → A) := by
+ intros A B U ; cases U ; constructor <;> solve_by_elim
+
 declare_syntax_cat matitaJust
 
 syntax "thus "? ("by " ident,+)? : matitaJust
@@ -84,15 +87,15 @@ syntax "thus "? ("by " ident,+)? : matitaJust
 def matitaJust_to_solveByElimArg : TSyntax `matitaJust -> MacroM (TSyntax ``Lean.Parser.Tactic.SolveByElim.args)
   | `(matitaJust | thus by $[$terms],* ) => do
     let args ← terms.mapM fun x => `(Lean.Parser.Tactic.SolveByElim.arg| $x:ident)
-    `(Lean.Parser.Tactic.SolveByElim.args| [$(args.push (← `(Lean.Parser.Tactic.SolveByElim.arg| _last_hypothesis_))),*, Or.inr, Or.inl])
+    `(Lean.Parser.Tactic.SolveByElim.args| [$(args.push (← `(Lean.Parser.Tactic.SolveByElim.arg| _last_hypothesis_))),*, Or.inr, Or.inl, matita.iff_e])
   | `(matitaJust | by $[$terms],* ) =>
-    `(Lean.Parser.Tactic.SolveByElim.args| [$[$terms:ident],*, Or.inr, Or.inl])
+    `(Lean.Parser.Tactic.SolveByElim.args| [$[$terms:ident],*, Or.inr, Or.inl, matita.iff_e])
   | `(matitaJust | thus ) =>
-    `(Lean.Parser.Tactic.SolveByElim.args| [_last_hypothesis_, Or.inr, Or.inl])
+    `(Lean.Parser.Tactic.SolveByElim.args| [_last_hypothesis_, Or.inr, Or.inl, matita.iff_e])
 --  | `(matitaJust | ) =>
 --    `(Lean.Parser.Tactic.SolveByElim.args| [])
   | _ => -- panic! "xxx" -- thereis  the right throwXXX
-    `(Lean.Parser.Tactic.SolveByElim.args| [Or.inr, Or.inl])
+    `(Lean.Parser.Tactic.SolveByElim.args| [Or.inr, Or.inl, matita.iff_e])
 
 syntax matitaJust " done" : tactic
 
@@ -100,7 +103,7 @@ macro_rules
   | `(tactic | $mj:matitaJust done) => do
     `(tactic | solve_by_elim only $(← matitaJust_to_solveByElimArg mj))
   | `(tactic | done) => do
-    `(tactic | solve_by_elim only [Or.inr, Or.inl])
+    `(tactic | solve_by_elim only [Or.inr, Or.inl, matita.iff_e])
 
 syntax (matitaJust)? "we " " proved " term ("as " ident)? : tactic
 syntax (matitaJust)? "we " " proved " term "as " ident "and " term "as " ident : tactic
@@ -116,13 +119,13 @@ macro_rules
     let x ← matitaJust_to_solveByElimArg mj
     `(tactic | have _ : $term := by solve_by_elim only $x)
   | `(tactic | we proved $term as $ident) =>
-    `(tactic | have $ident : $term := by solve_by_elim only [Or.inr, Or.inl])
+    `(tactic | have $ident : $term := by solve_by_elim only [Or.inr, Or.inl, matita.iff_e])
   | `(tactic | we proved $term) =>
-    `(tactic | have _ : $term := by solve_by_elim only [Or.inr, Or.inl])
+    `(tactic | have _ : $term := by solve_by_elim only [Or.inr, Or.inl, matita.iff_e])
   | `(tactic | $mj:matitaJust we proved $term₁ as $ident₁ and $term₂ as $ident₂) =>
     `(tactic | $mj:matitaJust we proved $term₁ ∧ $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
   | `(tactic | we proved $term₁ as $ident₁ and $term₂ as $ident₂) =>
-    `(tactic | we proved $term₁ ∧ $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
+    `(tactic | trace "goo" <;> we proved $term₁ ∧ $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
   | `(tactic | $mj:matitaJust let $ident₁ : $term₁ such that $term₂ as $ident₂) =>
     `(tactic | $mj:matitaJust we proved ∃$ident₁:ident : $term₁, $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
   | `(tactic | let $ident₁ : $term₁ such that $term₂ as $ident₂) =>
@@ -228,7 +231,7 @@ theorem union_symmetric: ∀A B, A ∪ B = B ∪ A := by
    thus by ax_union1 we proved Z ∈ A ∨ Z ∈ B as H
    we proceed by cases on H to prove Z ∈ B ∪ A
    . case a.mp.inl H
-     -- thus we proved Z ∈ B ∨ Z ∈ A
+     thus we proved Z ∈ B ∨ Z ∈ A  -- you can skip this step
      thus by ax_union2 done
    . case a.mp.inr H
      thus by ax_union2 done
@@ -246,6 +249,24 @@ theorem exists_example: (∃A, A ∈ ∅) → ∀A, A ∈ A := by
  thus let A : set such that A ∈ ∅ as H
  thus by ax_empty we proved False
  thus done -- absurd elimination used here
+
+theorem iff_example: ∀A B: Prop, ((A → B) ∧ (B → A)) → True := by
+ assume A: Prop
+ assume B: Prop
+ suppose (A → B) ∧ (B → A)
+ thus we proved A → B as H₁ and B → A as H₂
+ done
+
+theorem iff_example2: ∀A B: Prop, (A ↔ B) → (B ↔ A) := by
+ assume A: Prop
+ assume B: Prop
+ suppose A ↔ B
+ thus we proved A → B as H₁ and B → A as H₂
+ we split the proof
+ . we need to prove B → A
+   by H₂ done
+ . we need to prove A → B
+   by H₁ done
 
 -- theorem intersect_empty: ∀A. A ∩ ∅ = ∅.
 -- theorem transitivity_inclusion: ∀A,B,C. A ⊆ B → B ⊆ C → A ⊆ C.

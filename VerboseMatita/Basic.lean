@@ -7,7 +7,7 @@ open Lean.Elab.Tactic
 namespace matita
 
 -- Bugs:
---  assume/suppose: enforce that the type is the expected one
+--  assume/suppose: enforce that the type is a product and that is has the right sort
 --  "it suffices to prove"/"such that" (because of Verbose)
 --  by ... not very strong
 --  case is bugged
@@ -21,7 +21,7 @@ namespace matita
 --  case tactics that makes the hypothesis explicit
 --  introduzione dell'esiste
 --  letin
---  that is equivalent to after assume, suppose, we need to prove, by just we proved,the thesis becomes, that is equivalent to.
+--  that is equivalent to after by just we proved, that is equivalent to e le premesse introdotte da and_e
 --  we proceed by induction on
 --  we proceed by cases on
 --  by induction hypothesis we know
@@ -33,11 +33,11 @@ namespace matita
 --  code duplication for using Or.inl, Or.inr automatically in solve_by_elim
 
 -- Implemented:
---  assume
---  suppose
+--  assume [that is equivalent to]
+--  suppose [that is equivalent to]
 --  done
 --  we proved
---  we need to prove
+--  we need to prove [that is equivalent to]
 --  we claim ... as ... by ...
 --  we proceed by cases on
 --  case
@@ -58,23 +58,31 @@ namespace matita
 --    let x := (← getMainDecl).lctx.lastDecl.map (fun x ↦ x.toExpr)
 --    Lean.addRawTrace x -/
 
-
-syntax "assume " ident " : " term : tactic
-
-macro_rules
-  | `(tactic| assume $ident : $type) => `(tactic| Fix₁ $ident:ident : $type)
-
-syntax "suppose " term (" as " ident)? : tactic
-
-macro_rules
-  | `(tactic| suppose $term as $ident) => `(tactic| Assume₁ $ident:ident : $term)
-  | `(tactic| suppose $term) => `(tactic| intro)
-
-
 syntax "_last_hypothesis_" : term
 
 elab_rules : term
  |`(term| _last_hypothesis_) => do (← Lean.getLCtx).lastDecl.map (fun x ↦ x.toExpr) -- bug here exclude recursive call to theorem
+
+declare_syntax_cat matitaEquivalent
+
+syntax "that " "is " "equivalent " "to " term : matitaEquivalent
+
+syntax "assume " ident " : " term (matitaEquivalent)? : tactic
+
+macro_rules
+  | `(tactic| assume $ident : $type) => `(tactic| intro $ident:ident <;> guard_hyp _last_hypothesis_ :ₛ $type)
+  | `(tactic| assume $ident : $type that is equivalent to $type₂) =>
+    `(tactic| assume $ident : $type <;> change $type₂ at _last_hypothesis_)
+
+
+syntax "suppose " term (matitaEquivalent)? (" as " ident)? : tactic
+
+macro_rules
+  | `(tactic| suppose $term as $ident) => `(tactic| intro $ident:ident <;> guard_hyp _last_hypothesis_ :ₛ $term)
+  | `(tactic| suppose $term) => `(tactic| intro <;> guard_hyp _last_hypothesis_ :ₛ $term)
+  | `(tactic| suppose $term that is equivalent to $type $[as $ident]? ) =>
+    `(tactic| suppose $term $[as $ident]? <;> change $type at _last_hypothesis_)
+
 
 -- one more bug here
 --macro_rules
@@ -131,15 +139,11 @@ macro_rules
   | `(tactic | $mj:matitaJust we proved $term₁ as $ident₁ and $term₂ as $ident₂) =>
     `(tactic | $mj:matitaJust we proved $term₁ ∧ $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
   | `(tactic | we proved $term₁ as $ident₁ and $term₂ as $ident₂) =>
-    `(tactic | trace "goo" <;> we proved $term₁ ∧ $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
+    `(tactic | we proved $term₁ ∧ $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
   | `(tactic | $mj:matitaJust let $ident₁ : $term₁ such that $term₂ as $ident₂) =>
     `(tactic | $mj:matitaJust we proved ∃$ident₁:ident : $term₁, $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
   | `(tactic | let $ident₁ : $term₁ such that $term₂ as $ident₂) =>
     `(tactic | we proved ∃$ident₁:ident : $term₁, $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
-
-declare_syntax_cat matitaEquivalent
-
-syntax "that " "is " "equivalent " "to " term : matitaEquivalent
 
 syntax "we " "need " "to " "prove " term (matitaEquivalent)? : tactic
 
@@ -206,6 +210,18 @@ theorem reflexivity_inclusion: ∀A, A ⊆ A := by
  assume Z: set
  suppose Z ∈ A
  thus done
+
+theorem transitivity_inclusion: ∀A B C, A ⊆ B → B ⊆ C → A ⊆ C := by
+ assume A: set
+ assume B: set
+ assume C: set
+ suppose A ⊆ B that is equivalent to ∀Z, Z ∈ A → Z ∈ B as H₁
+ suppose B ⊆ C that is equivalent to ∀Z, Z ∈ B → Z ∈ C as H₂
+ we need to prove A ⊆ C that is equivalent to ∀Z, Z ∈ A → Z ∈ C
+ assume Z: set
+ suppose Z ∈ A
+ thus by H₁ we proved Z ∈ B
+ thus by H₂ done
 
 theorem empty_absurd: ∀X A, X ∈ ∅ → X ∈ A := by
  assume X : set

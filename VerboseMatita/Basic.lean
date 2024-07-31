@@ -7,8 +7,8 @@ open Lean.Elab.Tactic
 namespace matita
 
 -- Bugs:
---  assume/suppose: enforce that the type is a product and that is has the right sort
---  "it suffices to prove"/"such that" (because of Verbose)
+--  assume/suppose/we choose/we split the proof: enforce that the type is a product and that is has the right sort
+--  "it suffices to prove"/"such that"/"we choose" (because of Verbose)
 --  by ... not very strong
 --  case is bugged
 --  and/exist elim: enforce that the type is the expected one
@@ -20,9 +20,8 @@ namespace matita
 --     solve_by_elim? (possibly impossible?)
 --  suppose ... that is equivalent to
 --  case tactics that makes the hypothesis explicit
---  introduzione dell'esiste
 --  letin
---  that is equivalent to after by just we proved, that is equivalent to, it suffices to prove e le premesse introdotte da and_e
+--  that is equivalent to after by just we proved, that is equivalent to, we claim, it suffices to prove e le premesse introdotte da and_e
 --  we proceed by induction on
 --  we proceed by cases on
 --  by induction hypothesis we know
@@ -44,6 +43,7 @@ namespace matita
 --  case
 --  by it suffice to prove
 --  we split the proof
+--  we choose .. and prove .. [that is equivalent to]
 --  we proved .. and ..
 --  let .. such that
 
@@ -166,6 +166,13 @@ syntax "by " term "it suffices to prove " term : tactic -- "it suffices to prove
 elab_rules : tactic
  | `(tactic| by $term:term it suffices to prove $arg) => bySufficesTac term #[arg]
 
+syntax "we choose " term "and " "prove " term (matitaEquivalent)? : tactic
+
+macro_rules
+ | `(tactic| we choose $term₁ and prove $term₂) => `(tactic| existsi $term₁ <;> we need to prove $term₂)
+ | `(tactic| we choose $term₁ and prove $term₂ that is equivalent to $term₃) =>
+   `(tactic| we choose $term₁ and prove $term₂ <;> change $term₃)
+
 end matita
 
 namespace set_theory
@@ -272,6 +279,13 @@ theorem exists_example: (∃A, A ∈ ∅) → ∀A, A ∈ A := by
  thus let A : set such that A ∈ ∅ as H
  thus by ax_empty we proved False
  thus done -- absurd elimination used here
+
+ theorem exists_example2: ∀A, ∃B, B ⊆ A := by
+  assume A: set
+  we choose ∅ and prove ∅ ⊆ A that is equivalent to ∀Z, Z ∈ ∅ → Z ∈ A
+  assume Z: set
+  suppose Z ∈ ∅
+  thus by ax_empty done
 
 theorem iff_example: ∀A B: Prop, ((A → B) ∧ (B → A)) → True := by
  assume A: Prop

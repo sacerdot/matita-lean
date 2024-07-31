@@ -15,6 +15,9 @@ namespace matita
 --  solve_by_elim only L  is weak (does not add new hypotheses to L)
 
 -- Todo:
+--  should we proceed by cases be used only for ∨_e and be changed to
+--   matitaJust we proceed by cases
+--   to avoid confusion with we proceed by induction?
 --  is suffices to prove: implement using matitaJust
 --  eliminazione dell'assurdo: done works good? add other syntax like "absurdum"? try to remove it from
 --     solve_by_elim? (possibly impossible?)
@@ -22,8 +25,6 @@ namespace matita
 --  case tactics that makes the hypothesis explicit
 --  letin
 --  that is equivalent to after by just we proved, that is equivalent to, we claim, it suffices to prove e le premesse introdotte da and_e
---  we proceed by induction on
---  we proceed by cases on
 --  by induction hypothesis we know
 --  conclude/obtain/=
 
@@ -40,6 +41,7 @@ namespace matita
 --  we need to prove [that is equivalent to]
 --  we claim ... as ... by ...
 --  we proceed by cases on
+--  we proceed by induction on
 --  case
 --  by it suffice to prove
 --  we split the proof
@@ -160,6 +162,8 @@ macro "we " "claim " stmt:term "as " name:ident "by" colGt prf:tacticSeq : tacti
 macro "we " "claim " stmt:term                  "by" colGt prf:tacticSeq : tactic => `(tactic|have _ : $stmt := by $prf)
 
 macro "we " "proceed " "by " "cases " "on " name:ident "to " "prove " stmt:term : tactic => `(tactic|guard_target =ₛ $stmt <;> cases $name:term)
+
+macro "we " "proceed " "by " "induction " "on " name:ident ": " type:term "to " "prove " stmt:term : tactic => `(tactic|guard_target =ₛ ∀$name : $type, $stmt <;> intro $name:ident <;> induction $name:term)
 
 syntax "by " term "it suffices to prove " term : tactic -- "it suffices to prove " is a keyword in Verbose
 
@@ -314,8 +318,7 @@ def append: List α → List α → List α
 | (x::l₁), l₂ => x::(append l₁ l₂)
 
 theorem append_empty: ∀l: List ℕ, append l [] = l := by
- assume l: list ℕ
- induction l
+ we proceed by induction on l: List ℕ to prove append l [] = l
  . case nil
    we need to prove append ([] : List ℕ) [] = [] that is equivalent to [] = []
    done
@@ -345,8 +348,7 @@ def sumT: Tree ℕ → ℕ
 | Node T1 T2 => sumT T1 + sumT T2
 
 theorem sumL_append: ∀l₁ l₂, sumL (append l₁ l₂) = sumL l₁ + sumL l₂ := by
- assume l₁: list ℕ
- induction l₁
+ we proceed by induction on l₁:List ℕ to prove ∀l₂, sumL (append l₁ l₂) = sumL l₁ + sumL l₂
  . case nil
    we need to prove ∀l₂, sumL (append [] l₂) = sumL [] + sumL l₂
     that is equivalent to ∀l₂, sumL l₂ = 0 + sumL l₂
@@ -366,9 +368,8 @@ theorem sumL_append: ∀l₁ l₂, sumL (append l₁ l₂) = sumL l₁ + sumL l�
     _ = x + (sumL l + sumL l₂)    := by rw [II]
     _ = x + sumL l + sumL l₂      := by rw [Nat.add_assoc]
 
-theorem sumL_collect: ∀l, sumL (collect l) = sumT l := by
- assume l: list ℕ
- induction l
+theorem sumL_collect: ∀T, sumL (collect T) = sumT T := by
+ we proceed by induction on T:Tree ℕ to prove sumL (collect T) = sumT T
  . case Leaf n
    we need to prove sumL (collect (Leaf n)) = sumT (Leaf n)
     that is equivalent to n = n

@@ -54,6 +54,10 @@ namespace matita
 --  trace            tattica
 --  Lean.addRawTrace
 
+-- Tricks by Mario
+--  to disable a syntax: redeclare it with hygh priority than make it fail to elaborate
+--  to pass infos between macros: use IO.mk_ref
+
 -- Tactics example:
 -- elab_rules : tactic
 -- |`(tactic| then) =>
@@ -161,10 +165,6 @@ macro "we " "split " "the " "proof " : tactic => `(tactic| first | apply And.int
 macro "we " "claim " stmt:term "as " name:ident "by" colGt prf:tacticSeq : tactic => `(tactic|have $name : $stmt := by $prf)
 macro "we " "claim " stmt:term                  "by" colGt prf:tacticSeq : tactic => `(tactic|have _ : $stmt := by $prf)
 
-macro "we " "proceed " "by " "cases " "on " name:ident "to " "prove " stmt:term : tactic => `(tactic|guard_target =ₛ $stmt <;> cases $name:term)
-
-macro "we " "proceed " "by " "induction " "on " name:ident ": " type:term "to " "prove " stmt:term : tactic => `(tactic|guard_target =ₛ ∀$name : $type, $stmt <;> intro $name:ident <;> induction $name:term)
-
 syntax "by " term "it suffices to prove " term : tactic -- "it suffices to prove " is a keyword in Verbose
 
 elab_rules : tactic
@@ -176,6 +176,17 @@ macro_rules
  | `(tactic| we choose $term₁ and prove $term₂) => `(tactic| existsi $term₁ <;> we need to prove $term₂)
  | `(tactic| we choose $term₁ and prove $term₂ that is equivalent to $term₃) =>
    `(tactic| we choose $term₁ and prove $term₂ <;> change $term₃)
+
+macro "we " "proceed " "by " "cases " "on " name:ident "to " "prove " stmt:term : tactic => `(tactic|guard_target =ₛ $stmt <;> cases $name:term)
+
+macro "we " "proceed " "by " "induction " "on " name:ident ": " type:term "to " "prove " stmt:term : tactic => `(tactic|guard_target =ₛ ∀$name : $type, $stmt <;> intro $name:ident <;> induction $name:term)
+
+macro "case " name:ident "( " arg₁:ident ": " type₁:term ") " "( " arg₂:ident ": " type₂:term ") "
+      "by " "induction " "hypothesis " "we " "know " iitype:term "as " ii:ident: tactic =>
+ `(tactic| case $name:ident $arg₁:ident $arg₂:ident $ii:ident
+       <;> guard_hyp $arg₁ :ₛ $type₁
+       <;> guard_hyp $arg₂ :ₛ $type₂
+       <;> guard_hyp $ii   :ₛ$iitype)
 
 end matita
 
@@ -322,7 +333,8 @@ theorem append_empty: ∀l: List ℕ, append l [] = l := by
  . case nil
    we need to prove append ([] : List ℕ) [] = [] that is equivalent to [] = []
    done
- . case cons y l' II
+ . case cons (y: ℕ) (l': List ℕ)
+   by induction hypothesis we know append l' [] = l' as II
    we need to prove append (y::l') [] = y::l' that is equivalent to y::(append l' []) = y::l'
    -- by II, congrFun, congrArg done  -- it works
    calc

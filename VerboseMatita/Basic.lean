@@ -309,6 +309,79 @@ theorem iff_example2: ∀A B: Prop, (A ↔ B) → (B ↔ A) := by
 -- theorem antisymmetry_inclusion: ∀A,B. A ⊆ B → B ⊆ A → A = B.
 -- theorem intersect_commutative: ∀A,B. A ∩ B = B ∩ A.
 
+def append: List α → List α → List α
+| [], l₂ => l₂
+| (x::l₁), l₂ => x::(append l₁ l₂)
+
+theorem append_empty: ∀l: List ℕ, append l [] = l := by
+ assume l: list ℕ
+ induction l
+ . case nil
+   we need to prove append ([] : List ℕ) [] = [] that is equivalent to [] = []
+   done
+ . case cons y l' II
+   we need to prove append (y::l') [] = y::l' that is equivalent to y::(append l' []) = y::l'
+   -- by II, congrFun, congrArg done  -- it works
+   calc
+        y::(append l' [])
+    _ = y::l'              := by rw [II]
+
+def sumL: List ℕ → ℕ
+| [] => 0
+| x::l => x + sumL l
+
+inductive Tree (α : Type u) where
+| Leaf : α → Tree α
+| Node : Tree α → Tree α → Tree α
+
+open Tree
+
+def collect: Tree α → List α
+| Leaf n => n::[]
+| Node T1 T2 => append (collect T1) (collect T2)
+
+def sumT: Tree ℕ → ℕ
+| Leaf n => n
+| Node T1 T2 => sumT T1 + sumT T2
+
+theorem sumL_append: ∀l₁ l₂, sumL (append l₁ l₂) = sumL l₁ + sumL l₂ := by
+ assume l₁: list ℕ
+ induction l₁
+ . case nil
+   we need to prove ∀l₂, sumL (append [] l₂) = sumL [] + sumL l₂
+    that is equivalent to ∀l₂, sumL l₂ = 0 + sumL l₂
+   --assume l₂: List ℕ
+   -- calc
+   --     sumL l₂
+   -- _ = 0 + sumL l₂ := by simp only [zero_add]
+   by zero_add, Eq.symm done
+ . case cons x l II
+   we need to prove ∀l₂, sumL (append (x::l) l₂) = sumL (x::l) + sumL l₂
+    that is equivalent to ∀l₂, x + sumL (append l l₂) = x + sumL l + sumL l₂
+   -- simp [II, congrFun, congrArg, Nat.add_assoc]
+   -- by II, congrFun, congrArg, Nat.add_assoc done
+   assume l₂: List ℕ
+   calc
+        x + sumL (append l l₂)
+    _ = x + (sumL l + sumL l₂)    := by rw [II]
+    _ = x + sumL l + sumL l₂      := by rw [Nat.add_assoc]
+
+theorem sumL_collect: ∀l, sumL (collect l) = sumT l := by
+ assume l: list ℕ
+ induction l
+ . case Leaf n
+   we need to prove sumL (collect (Leaf n)) = sumT (Leaf n)
+    that is equivalent to n = n
+   done
+ . case Node T₁ T₂ II₁ II₂
+   we need to prove sumL (collect (Node T₁ T₂)) = sumT (Node T₁ T₂)
+    that is equivalent to sumL (append (collect T₁) (collect T₂)) = sumT T₁ + sumT T₂
+   -- simp [sumL_append, II₁, II₂]
+   calc
+       sumL (append (collect T₁) (collect T₂))
+   _ = sumL (collect T₁) + sumL (collect T₂)   := by rw [sumL_append]
+   _ = sumT T₁ + sumT T₂                       := by rw [II₁, II₂]
+
 end matita
 
 section verbose

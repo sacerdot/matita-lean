@@ -1,5 +1,5 @@
 import Lean -- To allow Ctrl+Click over Lean syntax
-import Verbose.English.All
+--import Verbose.English.All
 
 open Lean
 open Lean.Elab.Tactic
@@ -8,15 +8,15 @@ namespace matita
 
 -- Bugs:
 --  assume/suppose/we choose/we split the proof: enforce that the type is a product and that is has the right sort
---  "it suffices to prove"/"such that"/"we choose" (because of Verbose)
 --  by ... not very strong
 --  case is bugged
 --  and/exist elim: enforce that the type is the expected one
 --  solve_by_elim only L  is weak (does not add new hypotheses to L)
+--  _last_hypothesis_ can refer to theorem name
 
 -- Todo:
 --  should we proceed by cases be used only for ∨_e and be changed to
---   matitaJust we proceed by cases
+--   matitaJust we proceed by cases; and what about case for those cases?
 --   to avoid confusion with we proceed by induction?
 --  is suffices to prove: implement using matitaJust
 --  eliminazione dell'assurdo: done works good? add other syntax like "absurdum"? try to remove it from
@@ -68,7 +68,7 @@ namespace matita
 syntax "_last_hypothesis_" : term
 
 elab_rules : term
- |`(term| _last_hypothesis_) => do (← Lean.getLCtx).lastDecl.map (fun x ↦ x.toExpr) -- bug here exclude recursive call to theorem
+ |`(term| _last_hypothesis_) => do ((← Lean.getLCtx).lastDecl.map (fun x ↦ x.toExpr)).getM -- bug here exclude recursive call to theorem
 
 declare_syntax_cat matitaEquivalent
 
@@ -128,7 +128,7 @@ macro_rules
 
 syntax (matitaJust)? "we " " proved " term ("as " ident)? : tactic
 syntax (matitaJust)? "we " " proved " term "as " ident "and " term "as " ident : tactic
-syntax (matitaJust)? "let " ident ": " term "such that " term "as " ident : tactic
+syntax (matitaJust)? "let " ident ": " term "such " "that " term "as " ident : tactic
 
 -- duplicated code, not nice
 -- idea: factorize a bit using a _empty_matita_just ?  or just use obviously?
@@ -144,13 +144,13 @@ macro_rules
   | `(tactic | we proved $term) =>
     `(tactic | have _ : $term := by solve_by_elim only [Or.inr, Or.inl, matita.iff_e])
   | `(tactic | $mj:matitaJust we proved $term₁ as $ident₁ and $term₂ as $ident₂) =>
-    `(tactic | $mj:matitaJust we proved $term₁ ∧ $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
+    `(tactic | $mj:matitaJust we proved $term₁ ∧ $term₂ <;> cases _last_hypothesis_ <;> case' _ $ident₁:ident $ident₂:ident => skip)
   | `(tactic | we proved $term₁ as $ident₁ and $term₂ as $ident₂) =>
-    `(tactic | we proved $term₁ ∧ $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
+    `(tactic | we proved $term₁ ∧ $term₂ <;> cases _last_hypothesis_ <;> case' _ $ident₁:ident $ident₂:ident => skip)
   | `(tactic | $mj:matitaJust let $ident₁ : $term₁ such that $term₂ as $ident₂) =>
-    `(tactic | $mj:matitaJust we proved ∃$ident₁:ident : $term₁, $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
+    `(tactic | $mj:matitaJust we proved ∃$ident₁:ident : $term₁, $term₂ <;> cases _last_hypothesis_ <;> case' _ $ident₁:ident $ident₂:ident => skip)
   | `(tactic | let $ident₁ : $term₁ such that $term₂ as $ident₂) =>
-    `(tactic | we proved ∃$ident₁:ident : $term₁, $term₂ <;> cases _last_hypothesis_ <;> case _ $ident₁:ident $ident₂:ident)
+    `(tactic | we proved ∃$ident₁:ident : $term₁, $term₂ <;> cases _last_hypothesis_ <;> case' _ $ident₁:ident $ident₂:ident => skip)
 
 syntax "we " "need " "to " "prove " term (matitaEquivalent)? : tactic
 
@@ -165,15 +165,15 @@ macro "we " "split " "the " "proof " : tactic => `(tactic| first | apply And.int
 macro "we " "claim " stmt:term "as " name:ident "by" colGt prf:tacticSeq : tactic => `(tactic|have $name : $stmt := by $prf)
 macro "we " "claim " stmt:term                  "by" colGt prf:tacticSeq : tactic => `(tactic|have _ : $stmt := by $prf)
 
-syntax "by " term "it suffices to prove " term : tactic -- "it suffices to prove " is a keyword in Verbose
-
-elab_rules : tactic
- | `(tactic| by $term:term it suffices to prove $arg) => bySufficesTac term #[arg]
-
-syntax "we choose " term "and " "prove " term (matitaEquivalent)? : tactic
+syntax "by " term "it " "suffices " "to " "prove " term : tactic -- "it suffices to prove " is a keyword in Verbose
 
 macro_rules
- | `(tactic| we choose $term₁ and prove $term₂) => `(tactic| existsi $term₁ <;> we need to prove $term₂)
+ | `(tactic| by $term:term it suffices to prove $arg) => `(tactic| apply $term:term <;> we need to prove $arg:term)
+
+syntax "we " "choose " term "and " "prove " term (matitaEquivalent)? : tactic
+
+macro_rules
+ | `(tactic| we choose $term₁ and prove $term₂) => `(tactic| exists $term₁ <;> we need to prove $term₂)
  | `(tactic| we choose $term₁ and prove $term₂ that is equivalent to $term₃) =>
    `(tactic| we choose $term₁ and prove $term₂ <;> change $term₃)
 
@@ -181,12 +181,20 @@ macro "we " "proceed " "by " "cases " "on " name:ident "to " "prove " stmt:term 
 
 macro "we " "proceed " "by " "induction " "on " name:ident ": " type:term "to " "prove " stmt:term : tactic => `(tactic|guard_target =ₛ ∀$name : $type, $stmt <;> intro $name:ident <;> induction $name:term)
 
-macro "case " name:ident "( " arg₁:ident ": " type₁:term ") " "( " arg₂:ident ": " type₂:term ") "
-      "by " "induction " "hypothesis " "we " "know " iitype:term "as " ii:ident: tactic =>
- `(tactic| case $name:ident $arg₁:ident $arg₂:ident $ii:ident
-       <;> guard_hyp $arg₁ :ₛ $type₁
-       <;> guard_hyp $arg₂ :ₛ $type₂
-       <;> guard_hyp $ii   :ₛ$iitype)
+syntax "guard_hyps" "[" ("( " ident ": " term ") ")* "]" : tactic
+
+macro_rules
+ | `(tactic| guard_hyps []) => `(tactic| skip)
+ | `(tactic| guard_hyps [($id : $term) $[($ids : $terms)]*]) => `(tactic| guard_hyp $id :ₛ $term <;> guard_hyps [$[($ids : $terms)]*])
+
+syntax "case " ident
+       ("( " ident ": " term ") ")*
+       ("by " "induction " "hypothesis " "we " "know " term "as " ident)* : tactic
+
+macro_rules
+ | `(tactic| case $name:ident $[( $arg:ident : $type:term )]*
+      $[by induction hypothesis we know $iitype:term as $ii:ident]*) =>
+   `(tactic| case' $name:ident $[$arg:ident]* $[$ii:ident]* => guard_hyps [$[($arg : $type)]* $[($ii : $iitype)]*])
 
 end matita
 
@@ -275,18 +283,18 @@ theorem union_symmetric: ∀A B, A ∪ B = B ∪ A := by
    suppose Z ∈ A ∪ B
    thus by ax_union1 we proved Z ∈ A ∨ Z ∈ B as H
    we proceed by cases on H to prove Z ∈ B ∪ A
-   . case a.mp.inl H
+   . case a.mp.inl (H: Z ∈ A)
      thus we proved Z ∈ B ∨ Z ∈ A  -- you can skip this step
      thus by ax_union2 done
-   . case a.mp.inr H
+   . case a.mp.inr (H: Z ∈ B)
      thus by ax_union2 done
  . we need to prove Z ∈ B ∪ A → Z ∈ A ∪ B
    suppose Z ∈ B ∪ A
    thus by ax_union1 we proved Z ∈ B ∨ Z ∈ A as H
    we proceed by cases on H to prove Z ∈ A ∪ B
-   . case a.mpr.inl H
+   . case a.mpr.inl (H: Z ∈ B)
      thus by ax_union2 done
-   . case a.mpr.inr H
+   . case a.mpr.inr (H: Z ∈ A)
      thus by ax_union2 done
 
 theorem exists_example: (∃A, A ∈ ∅) → ∀A, A ∈ A := by
@@ -341,6 +349,8 @@ theorem append_empty: ∀l: List ℕ, append l [] = l := by
         y::(append l' [])
     _ = y::l'              := by rw [II]
 
+macro "ℕ " : term => `(term| Nat)
+
 def sumL: List ℕ → ℕ
 | [] => 0
 | x::l => x + sumL l
@@ -368,8 +378,9 @@ theorem sumL_append: ∀l₁ l₂, sumL (append l₁ l₂) = sumL l₁ + sumL l�
    -- calc
    --     sumL l₂
    -- _ = 0 + sumL l₂ := by simp only [zero_add]
-   by zero_add, Eq.symm done
- . case cons x l II
+   by Nat.zero_add, Eq.symm done
+ . case cons (x: ℕ) (l: List ℕ)
+   by induction hypothesis we know ∀l₂, sumL (append (True::l) l₂) = sumL l + sumL l₂ as II -- big bug here True accepted
    we need to prove ∀l₂, sumL (append (x::l) l₂) = sumL (x::l) + sumL l₂
     that is equivalent to ∀l₂, x + sumL (append l l₂) = x + sumL l + sumL l₂
    -- simp [II, congrFun, congrArg, Nat.add_assoc]
@@ -382,11 +393,13 @@ theorem sumL_append: ∀l₁ l₂, sumL (append l₁ l₂) = sumL l₁ + sumL l�
 
 theorem sumL_collect: ∀T, sumL (collect T) = sumT T := by
  we proceed by induction on T:Tree ℕ to prove sumL (collect T) = sumT T
- . case Leaf n
+ . case Leaf (n: ℕ)
    we need to prove sumL (collect (Leaf n)) = sumT (Leaf n)
     that is equivalent to n = n
    done
- . case Node T₁ T₂ II₁ II₂
+ . case Node (T₁: Tree ℕ) (T₂: Tree ℕ)
+   by induction hypothesis we know sumL (collect T₁) = sumT T₁ as II₁
+   by induction hypothesis we know sumL (collect T2) = sumT T2 as II₂
    we need to prove sumL (collect (Node T₁ T₂)) = sumT (Node T₁ T₂)
     that is equivalent to sumL (append (collect T₁) (collect T₂)) = sumT T₁ + sumT T₂
    -- simp [sumL_append, II₁, II₂]
@@ -396,6 +409,8 @@ theorem sumL_collect: ∀T, sumL (collect T) = sumT T := by
    _ = sumT T₁ + sumT T₂                       := by rw [II₁, II₂]
 
 end matita
+
+/-import Verbose.English.All
 
 section verbose
 -- Proofs in Lean/verbose-lean
@@ -432,3 +447,4 @@ theorem empty_absurd: ∀X A, X ∈ ∅ → X ∈ A := by
  We conclude by K
 
 end verbose
+-/

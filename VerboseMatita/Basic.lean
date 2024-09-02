@@ -336,6 +336,13 @@ theorem iff_example2: ∀A B: Prop, (A ↔ B) → (B ↔ A) := by
 def append: List α → List α → List α
 | [], l₂ => l₂
 | (x::l₁), l₂ => x::(append l₁ l₂)
+termination_by structural x₁ => x₁
+
+def append2 (l₁: List α) (l₂: List α) : List α :=
+match l₁ with
+| [] => l₂
+| (x::l₁) => x::(append2 l₁ l₂)
+termination_by structural l₁
 
 theorem append_empty: ∀l: List ℕ, append l [] = l := by
  we proceed by induction on l: List ℕ to prove append l [] = l

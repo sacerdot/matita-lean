@@ -15,6 +15,7 @@ namespace matita
 --  _last_hypothesis_ can refer to theorem name
 
 -- Todo:
+--  test "termination_by structural x" (requires lean v4.11.0)
 --  should we proceed by cases be used only for ∨_e and be changed to
 --   matitaJust we proceed by cases; and what about case for those cases?
 --   to avoid confusion with we proceed by induction?

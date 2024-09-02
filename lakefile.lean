@@ -12,4 +12,4 @@ lean_lib «VerboseMatita» where
 --lean_exe «verbose-matita» where
 --  root := `Main
 
-require verbose from git "https://github.com/PatrickMassot/verbose-lean4.git"
+--require verbose from git "https://github.com/PatrickMassot/verbose-lean4.git"

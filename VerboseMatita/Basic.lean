@@ -255,11 +255,30 @@ theorem transitivity_inclusion: ∀A B C, A ⊆ B → B ⊆ C → A ⊆ C := by
  thus by H₁ we proved Z ∈ B
  thus by H₂ done
 
+theorem subset_to_eq: ∀A B, A ⊆ B → B ⊆ A → A = B := by
+ assume A: set
+ assume B: set
+ suppose A ⊆ B that is equivalent to ∀Z, Z ∈ A → Z ∈ B as H₁
+ suppose B ⊆ A that is equivalent to ∀Z, Z ∈ B → Z ∈ A as H₂
+ we need to prove A = B
+ by ax_extensionality it suffices to prove ∀Z, Z ∈ A ↔ Z ∈ B
+ assume Z: set
+ we split the proof
+ . we need to prove Z ∈ A → Z ∈ B
+   suppose Z ∈ A
+   thus by H₁ done
+ . we need to prove Z ∈ B → Z ∈ A
+   suppose Z ∈ B
+   thus by H₂ done
+
+
 theorem empty_absurd: ∀X A, X ∈ ∅ → X ∈ A := by
  assume X : set
  assume A : set
  suppose X ∈ ∅
- thus by ax_empty done
+ thus by ax_empty we proved False
+ thus done
+
 
 theorem intersection_idempotent: ∀A, A ∩ A = A := by
  assume A : set
